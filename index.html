@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#f5e9b8">
+<title>For You</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎁</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5e9b8;
+    --card: #ffffff;
+    --field: #fdf9ec;
+    --ink: #1d1d1f;
+    --muted: #6b5c26;
+    --accent: #1d1d1f;
+    --accent-dark: #000000;
+    --warm: #c2410c;
+    --line: #e5d394;
+    --radius: 20px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "DM Sans", system-ui, sans-serif;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+  h1 { font-weight: 700; margin: 0; line-height: 1.15; letter-spacing: -0.02em; }
+
+  #pond { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  main {
+    position: relative; z-index: 1;
+    min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(96px, calc(env(safe-area-inset-bottom) + 80px));
+  }
+  .screen { width: 100%; max-width: 440px; display: none; text-align: center; }
+  .screen.active { display: block; animation: rise .5s cubic-bezier(.2,.8,.2,1); }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  .emoji { font-size: 52px; line-height: 1; margin-bottom: 18px; display: inline-block; }
+  .hey { color: var(--muted); font-size: 19px; margin: 0 0 8px; font-weight: 500; }
+  h1 { font-size: clamp(32px, 9vw, 42px); margin-bottom: 30px; }
+  .hint { color: var(--muted); font-size: 14px; margin: 18px 0 0; }
+
+  button { font-family: inherit; cursor: pointer; border: 0; }
+  .btn {
+    border-radius: 999px; font-weight: 700; font-size: 19px; padding: 18px 30px;
+    background: var(--accent); color: #fff; transition: transform .15s, background .2s;
+  }
+  .btn:hover { background: var(--accent-dark); }
+  .btn:active { transform: scale(.96); }
+  .ghost { background: var(--card); color: var(--ink); border: 1.5px solid var(--line); }
+  .ghost:hover { background: var(--field); }
+
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 20px;
+    border: 1px solid var(--line); text-align: left; margin-top: 22px;
+  }
+  .card label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+  .card input {
+    width: 100%; font: inherit; font-size: 16px; color: var(--ink);
+    padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--field); outline: none;
+  }
+  .card input:focus { border-color: var(--accent); }
+  .found { display: none; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; color: var(--ink); word-break: break-all; }
+  .found.show { display: flex; }
+  .err { color: var(--warm); font-size: 14px; margin: 10px 0 0; min-height: 0; }
+  .primary {
+    width: 100%; margin-top: 16px; padding: 16px; border-radius: 14px;
+    background: var(--accent); color: #fff; font-size: 17px; font-weight: 700; transition: opacity .2s, transform .15s;
+  }
+  .primary:active { transform: scale(.98); }
+  .primary:disabled { opacity: .35; cursor: default; }
+
+  .done p { color: var(--muted); font-size: 16px; line-height: 1.5; margin: 0 0 26px; }
+
+  /* music */
+  #yt {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 76px); transform: translateX(-50%);
+    width: 200px; height: 200px; border: 0; border-radius: 14px; z-index: -1; opacity: 0; pointer-events: none;
+    transition: opacity .3s;
+  }
+  #yt.show { z-index: 6; opacity: 1; pointer-events: auto; height: 113px; box-shadow: 0 12px 30px -12px rgba(0,0,0,.4); }
+  .music {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 18px); transform: translateX(-50%);
+    z-index: 5; display: none; align-items: center; gap: 10px; white-space: nowrap;
+    background: var(--card); color: var(--ink); border: 1.5px solid var(--line); border-radius: 999px;
+    padding: 10px 16px 10px 10px; font-size: 14px; font-weight: 500;
+  }
+  .music.show { display: flex; }
+  .music .icon {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: grid; place-items: center; font-size: 12px;
+  }
+  .music .bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+  .music .bars i { width: 3px; background: var(--ink); border-radius: 1px; height: 4px; }
+  .music.playing .bars i { animation: eq .9s ease-in-out infinite; }
+  .music.playing .bars i:nth-child(2) { animation-delay: -.3s; }
+  .music.playing .bars i:nth-child(3) { animation-delay: -.6s; }
+  @keyframes eq { 50% { height: 12px; } }
+  .music.nudge { animation: nudge 1.2s ease-in-out infinite; }
+  @keyframes nudge { 50% { transform: translateX(-50%) scale(1.05); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<canvas id="pond" aria-hidden="true"></canvas>
+<main>
+  <!-- 1. cover: her tap here is what lets the music start -->
+  <section class="screen active" id="s-cover">
+    <div class="emoji">🎧</div>
+    <h1>Something for you</h1>
+    <button class="btn" id="open">Open</button>
+    <p class="hint">Sound on</p>
+  </section>
+
+  <!-- 2. the question -->
+  <section class="screen" id="s-ask">
+    <p class="hey">My dearest,</p>
+    <h1>what is it that you want?</h1>
+    <button class="btn" id="paste">Click me to paste the link</button>
+    <div class="card">
+      <label for="link">or paste it here</label>
+      <input id="link" type="url" inputmode="url" placeholder="https://…" autocomplete="off">
+      <div class="found" id="found">🔗 <span id="foundHost"></span></div>
+      <p class="err" id="err"></p>
+      <button class="primary" id="send" disabled>Send</button>
+    </div>
+  </section>
+
+  <!-- 3. sent -->
+  <section class="screen done" id="s-done">
+    <div class="emoji">😌</div>
+    <h1>Got it.</h1>
+    <p>Leave the rest to me.</p>
+    <button class="btn ghost" id="another">Send another link</button>
+  </section>
+</main>
+
+<audio id="audio" src="who-knows.mp3" loop preload="auto"></audio>
+<iframe id="yt" title="Who Knows by Daniel Caesar" allow="autoplay; encrypted-media"></iframe>
+<button class="music" id="music" aria-label="Play or pause music">
+  <span class="icon" id="musicIcon">▶</span>
+  <span>Who Knows · Daniel Caesar</span>
+  <span class="bars"><i></i><i></i><i></i></span>
+</button>
+
+<script>
+// ---- Edit these ----
+const CONFIG = {
+  ntfyTopic: "q-u0rb3e0xng0pi7mmcs", // same topic as the date page
+  songs: ["Wzn4BLtE73o", "glscfhJyZHo"], // YouTube backup if who-knows.mp3 is missing: official audio, then lyric video
+};
+// --------------------
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+// ---- answer delivery (queued so nothing is lost if the network blips) ----
+async function deliver(msg) {
+  const r = await fetch("https://ntfy.sh/", {
+    method: "POST",
+    body: JSON.stringify({
+      topic: CONFIG.ntfyTopic, title: msg.title, message: msg.body, tags: msg.tags, priority: 4,
+      click: msg.link, actions: [{ action: "view", label: "Open link", url: msg.link }],
+    }),
+  });
+  if (!r.ok) throw new Error(r.status);
+}
+let flushing = false, again = false;
+async function flush() {
+  if (flushing) { again = true; return; }
+  flushing = true;
+  let failed = false;
+  for (let msg; (msg = store.get("outbox-want", [])[0]); ) {
+    try { await deliver(msg); } catch { failed = true; break; }
+    store.set("outbox-want", store.get("outbox-want", []).slice(1));
+  }
+  flushing = false;
+  if (again && !failed) { again = false; return flush(); }
+  if (failed) setTimeout(flush, 8000);
+}
+function send(link) {
+  const queue = store.get("outbox-want", []);
+  queue.push({ title: "She wants this", body: link, tags: ["gift"], link });
+  store.set("outbox-want", queue);
+  flush();
+}
+
+function show(step) {
+  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+  $("s-" + step).classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+// ---- music: who-knows.mp3, or a YouTube embed (driven over postMessage) if the file can't load ----
+const audio = $("audio"), yt = $("yt"), pill = $("music");
+let song = 0, playing = false, wanted = false, useYT = false;
+audio.volume = 0.7;
+audio.addEventListener("play", () => setPlaying(true));
+audio.addEventListener("pause", () => setPlaying(false));
+const toYouTube = () => { if (!useYT) { useYT = true; loadSong(); } };
+audio.addEventListener("error", toYouTube);
+if (audio.error) toYouTube();
+function loadSong() {
+  const id = CONFIG.songs[song];
+  const origin = location.origin.startsWith("http") ? `&origin=${encodeURIComponent(location.origin)}` : "";
+  yt.src = `https://www.youtube.com/embed/${id}?enablejsapi=1&playsinline=1&controls=0&loop=1&playlist=${id}&rel=0${origin}`;
+}
+function ytCmd(func, args = []) {
+  yt.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args, id: 1, channel: "widget" }), "*");
+}
+function setPlaying(on) {
+  playing = on;
+  pill.classList.toggle("playing", on);
+  $("musicIcon").textContent = on ? "❚❚" : "▶";
+  if (on) { pill.classList.remove("nudge"); yt.classList.remove("show"); }
+}
+function play() {
+  wanted = true;
+  if (!useYT) { audio.play().catch(() => (audio.error ? toYouTube() : pill.classList.add("nudge"))); return; }
+  ytCmd("unMute"); ytCmd("setVolume", [70]); ytCmd("playVideo");
+  // some phones only allow a tap on the player itself, so reveal it if nothing started
+  setTimeout(() => { if (!playing) { pill.classList.add("nudge"); yt.classList.add("show"); } }, 2500);
+}
+yt.addEventListener("load", () => {
+  yt.contentWindow?.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*");
+  if (wanted) play();
+});
+addEventListener("message", (e) => {
+  let host = "";
+  try { host = new URL(e.origin).hostname; } catch { return; }
+  if (!/(^|\.)youtube(-nocookie)?\.com$/.test(host)) return;
+  let d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch { return; }
+  const state = d.event === "onStateChange" ? d.info : d.event === "infoDelivery" ? d.info?.playerState : undefined;
+  if (state === 1) setPlaying(true);
+  else if (state === 2 || state === 0) setPlaying(false);
+  if (d.event === "onError" && song < CONFIG.songs.length - 1) { song++; loadSong(); }
+});
+pill.addEventListener("click", () => {
+  if (!playing) return play();
+  wanted = false;
+  if (useYT) ytCmd("pauseVideo"); else audio.pause();
+  setPlaying(false);
+});
+
+// ---- cover ----
+$("open").addEventListener("click", () => {
+  play();
+  pill.classList.add("show");
+  show("ask");
+});
+
+// ---- the link ----
+const input = $("link");
+let link = null;
+function extract(text) {
+  text = (text || "").trim();
+  const m = text.match(/https?:\/\/[^\s<>"']+/i);
+  if (m) return m[0].replace(/[).,!?]+$/, "");
+  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(text)) return "https://" + text;
+  return null;
+}
+function check(showError) {
+  link = extract(input.value);
+  $("send").disabled = !link;
+  $("found").classList.toggle("show", !!link);
+  if (link) { try { $("foundHost").textContent = new URL(link).hostname.replace(/^www\./, ""); } catch { link = null; } }
+  $("err").textContent = !link && showError && input.value.trim() ? "That doesn't look like a link. Try copying it again?" : "";
+}
+input.addEventListener("input", () => check(false));
+input.addEventListener("blur", () => check(true));
+$("paste").addEventListener("click", async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) { input.value = text.trim(); check(true); return; }
+  } catch {}
+  // clipboard not readable here: let her paste by hand
+  input.focus();
+  $("err").textContent = "Long-press the box and tap Paste.";
+});
+$("send").addEventListener("click", () => {
+  if (!link) return;
+  send(link);
+  show("done");
+});
+$("another").addEventListener("click", () => {
+  input.value = ""; check(false);
+  show("ask");
+});
+
+// ---- koi pond ----
+(function pond() {
+  const cv = $("pond"), ctx = cv.getContext("2d");
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W = 0, H = 0, fish = [], ripples = [];
+  const SEGS = 16, GAP = 0.5, TAU = Math.PI * 2;
+  const CREAM = "#fbf6ec", RED = "#d8341f", ORANGE = "#ee7a1e", BLACK = "#1f1d1c";
+  const VARIETIES = [
+    { body: CREAM, patches: [RED, RED, RED] },          // white with red
+    { body: CREAM, patches: [RED, RED], sumi: 5 },      // white, red and small black spots
+    { body: BLACK, patches: [RED, CREAM, CREAM] },      // black with red and white
+    { body: ORANGE, patches: [] },                      // plain orange
+    { body: CREAM, patches: [], crown: RED },           // white with a red spot on the head
+    { body: CREAM, patches: [ORANGE, ORANGE] },         // white with orange
+  ];
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const pt = (p, a, d) => [p.x + Math.cos(a) * d, p.y + Math.sin(a) * d];
+  // half-width along the spine: blunt head, widest at the shoulders, thin just before the tail
+  const width = (t) => (t < 0.3 ? 0.78 + 0.22 * Math.sin((t / 0.3) * Math.PI / 2) : 1 - 0.82 * Math.pow((t - 0.3) / 0.7, 1.3));
+
+  function makeFish() {
+    const v = VARIETIES[Math.floor(Math.random() * VARIETIES.length)];
+    const size = rand(9, 13) * Math.min(1.25, Math.max(0.85, Math.min(W, H) / 420));
+    const x = rand(0, W), y = rand(0, H), angle = rand(-Math.PI, Math.PI);
+    const segs = Array.from({ length: SEGS }, (_, i) => ({ x: x - Math.cos(angle) * i * size * GAP, y: y - Math.sin(angle) * i * size * GAP }));
+    // patches are clusters of overlapping circles so their edges look organic
+    const marks = [];
+    v.patches.forEach((c) => {
+      const ci = rand(1, SEGS - 5), cs = rand(-0.4, 0.4);
+      for (let k = 0; k < 4; k++) marks.push({ c, i: ci + rand(-1.6, 1.6), side: cs + rand(-0.45, 0.45), r: rand(0.35, 0.7) });
+    });
+    for (let k = 0; k < (v.sumi || 0); k++) marks.push({ c: BLACK, i: rand(2, SEGS - 4), side: rand(-0.7, 0.7), r: rand(0.12, 0.26) });
+    if (v.crown) marks.push({ c: v.crown, i: 1.2, side: 0, r: 0.55 });
+    return { v, size, angle, turn: 0, speed: rand(0.35, 0.6), boost: 0, flee: 0, fleeAngle: 0, phase: rand(0, 6), segs, marks, dirs: [] };
+  }
+
+  function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const want = Math.round(Math.min(9, Math.max(5, (W * H) / 90000)));
+    while (fish.length < want) fish.push(makeFish());
+    fish.length = want;
+  }
+
+  function step(f, dt) {
+    const head = f.segs[0];
+    f.turn = f.turn * 0.97 + rand(-1, 1) * 0.003;
+    const m = 50;
+    if (head.x < m || head.x > W - m || head.y < m || head.y > H - m) {
+      f.turn += wrapAngle(Math.atan2(H / 2 - head.y, W / 2 - head.x) - f.angle) * 0.005;
+    }
+    fish.forEach((o) => {
+      if (o === f) return;
+      const dx = head.x - o.segs[0].x, dy = head.y - o.segs[0].y, d = Math.hypot(dx, dy);
+      if (d > 0 && d < f.size * 5) f.turn += wrapAngle(Math.atan2(dy, dx) - f.angle) * 0.002;
+    });
+    f.turn = Math.max(-0.04, Math.min(0.04, f.turn));
+    f.angle += f.turn * dt;
+    if (f.flee > 0.02) {
+      f.angle += wrapAngle(f.fleeAngle - f.angle) * Math.min(1, 0.2 * dt) * f.flee;
+      f.flee *= Math.pow(0.96, dt);
+    }
+    f.boost *= Math.pow(0.975, dt);
+    const sp = (f.speed + f.boost) * dt;
+    f.phase += (0.05 + (f.speed + f.boost) * 0.16) * dt;
+    const a = f.angle + Math.sin(f.phase) * 0.12;
+    head.x += Math.cos(a) * sp;
+    head.y += Math.sin(a) * sp;
+    const gap = f.size * GAP;
+    for (let i = 1; i < SEGS; i++) {
+      const p = f.segs[i - 1], s = f.segs[i];
+      const dx = s.x - p.x, dy = s.y - p.y, d = Math.hypot(dx, dy) || 1;
+      s.x = p.x + (dx / d) * gap; s.y = p.y + (dy / d) * gap;
+    }
+  }
+
+  // a point on the body: i is a (fractional) spine index, side is in body sizes from the spine
+  function at(f, i, side) {
+    i = Math.max(0, Math.min(SEGS - 1, i));
+    const i0 = Math.min(SEGS - 2, Math.floor(i)), k = i - i0;
+    const a = f.segs[i0], b = f.segs[i0 + 1], n = f.dirs[i0] + Math.PI / 2;
+    return [a.x + (b.x - a.x) * k + Math.cos(n) * side * f.size, a.y + (b.y - a.y) * k + Math.sin(n) * side * f.size];
+  }
+
+  function bodyPath(f) {
+    const left = [], right = [];
+    f.segs.forEach((s, i) => {
+      const r = f.size * width(i / (SEGS - 1)), n = f.dirs[i] + Math.PI / 2;
+      left.push([s.x + Math.cos(n) * r, s.y + Math.sin(n) * r]);
+      right.push([s.x - Math.cos(n) * r, s.y - Math.sin(n) * r]);
+    });
+    const pts = [...left, ...right.reverse(), pt(f.segs[0], f.dirs[0], f.size * width(0) * 1.15)];
+    const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    ctx.beginPath();
+    let m = mid(pts[pts.length - 1], pts[0]);
+    ctx.moveTo(m[0], m[1]);
+    pts.forEach((p, i) => { m = mid(p, pts[(i + 1) % pts.length]); ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]); });
+    ctx.closePath();
+  }
+
+  function spine(f, from, to, lw, color) {
+    ctx.beginPath();
+    ctx.moveTo(f.segs[from].x, f.segs[from].y);
+    for (let i = from + 1; i <= to; i++) ctx.lineTo(f.segs[i].x, f.segs[i].y);
+    ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = color; ctx.stroke();
+  }
+
+  // translucent fin that fades toward its edge, with faint rays
+  function fin(x, y, ang, len, wid, flip, rgb) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(1, flip);
+    const g = ctx.createLinearGradient(0, 0, len, 0);
+    g.addColorStop(0, `rgba(${rgb},.8)`); g.addColorStop(1, `rgba(${rgb},.2)`);
+    ctx.beginPath();
+    ctx.moveTo(0, -wid * 0.35);
+    ctx.quadraticCurveTo(len * 0.55, -wid * 1.1, len, -wid * 0.15);
+    ctx.quadraticCurveTo(len * 1.05, wid * 0.5, len * 0.6, wid * 0.7);
+    ctx.quadraticCurveTo(len * 0.2, wid * 0.6, 0, wid * 0.35);
+    ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,.08)"; ctx.lineWidth = 0.6;
+    for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(0, k * wid * 0.15); ctx.lineTo(len * 0.9, k * wid * 0.45); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // forked tail that sways a beat behind the body
+  function tail(f, rgb) {
+    const p = f.segs[SEGS - 1], swing = Math.sin(f.phase - 1.4) * 0.35;
+    const a = f.dirs[SEGS - 1] + Math.PI + swing, L = f.size * 2.4, s = f.size, n = a + Math.PI / 2;
+    const lag = swing * 0.4;
+    const b1 = [p.x + Math.cos(n) * s * 0.15, p.y + Math.sin(n) * s * 0.15];
+    const b2 = [p.x - Math.cos(n) * s * 0.15, p.y - Math.sin(n) * s * 0.15];
+    const t1 = pt(p, a + 0.5 + lag, L), t2 = pt(p, a - 0.5 + lag, L), notch = pt(p, a + lag * 0.7, L * 0.55);
+    const c1 = pt(p, a + 0.6, L * 0.5), c2 = pt(p, a + 0.12 + lag, L * 0.8), c3 = pt(p, a - 0.12 + lag, L * 0.8), c4 = pt(p, a - 0.6, L * 0.5);
+    const g = ctx.createLinearGradient(p.x, p.y, ...pt(p, a, L));
+    g.addColorStop(0, `rgba(${rgb},.85)`); g.addColorStop(1, `rgba(${rgb},.18)`);
+    ctx.beginPath();
+    ctx.moveTo(...b1);
+    ctx.quadraticCurveTo(...c1, ...t1);
+    ctx.quadraticCurveTo(...c2, ...notch);
+    ctx.quadraticCurveTo(...c3, ...t2);
+    ctx.quadraticCurveTo(...c4, ...b2);
+    ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,.07)"; ctx.lineWidth = 0.6;
+    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(...pt(p, a + k * 0.22 + lag, L * (0.95 - Math.abs(k) * 0.05))); ctx.stroke(); }
+  }
+
+  function draw(f) {
+    const { segs, size } = f;
+    f.dirs = segs.map((_, i) => {
+      const a = segs[Math.max(0, i - 1)], b = segs[Math.min(SEGS - 1, i + 1)];
+      return Math.atan2(a.y - b.y, a.x - b.x);
+    });
+    const rgb = f.v.body === BLACK ? "45,42,40" : f.v.body === ORANGE ? "250,175,115" : "255,250,240";
+    const paddle = Math.sin(f.phase * 0.6);
+    tail(f, rgb);
+    // pelvic fins, then the bigger pectoral fins near the head
+    [[9, 0.9, 1.15, 0.36, 0.15], [3, 1.2, 1.95, 0.62, 0.3]].forEach(([i, spread, len, wid, sway]) => {
+      const [x, y] = at(f, i, 0), back = f.dirs[i] + Math.PI;
+      [-1, 1].forEach((s) => fin(x, y, back + s * (spread + paddle * sway), size * len, size * wid, -s, rgb));
+    });
+    // body with a soft shadow on the pond floor
+    ctx.save();
+    ctx.shadowColor = "rgba(90,70,20,.3)"; ctx.shadowBlur = size * 1.2;
+    ctx.shadowOffsetX = size * 0.5; ctx.shadowOffsetY = size * 1.1;
+    bodyPath(f); ctx.fillStyle = f.v.body; ctx.fill();
+    ctx.restore();
+    // markings, sheen and shading stay inside the body outline
+    ctx.save();
+    bodyPath(f); ctx.clip();
+    f.marks.forEach((m) => {
+      const [x, y] = at(f, m.i, m.side);
+      ctx.beginPath(); ctx.arc(x, y, size * m.r, 0, TAU); ctx.fillStyle = m.c; ctx.fill();
+    });
+    spine(f, 1, SEGS - 3, size * 0.75, "rgba(255,255,255,.16)");
+    spine(f, 5, SEGS - 4, size * 0.14, "rgba(0,0,0,.14)");
+    bodyPath(f); ctx.lineWidth = size * 0.55; ctx.strokeStyle = "rgba(60,40,0,.12)"; ctx.stroke();
+    ctx.restore();
+    // eyes and whiskers
+    const ha = f.dirs[0], nose = pt(segs[0], ha, size * 0.8);
+    [-1, 1].forEach((s) => {
+      const [ex, ey] = at(f, 0.7, s * 0.6);
+      ctx.beginPath(); ctx.arc(ex, ey, size * 0.13, 0, TAU); ctx.fillStyle = "#151413"; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + size * 0.03, ey - size * 0.03, size * 0.04, 0, TAU); ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fill();
+      const root = [nose[0] + Math.cos(ha + Math.PI / 2) * s * size * 0.2, nose[1] + Math.sin(ha + Math.PI / 2) * s * size * 0.2];
+      const tip = pt({ x: root[0], y: root[1] }, ha + s * 0.7, size * 0.4);
+      ctx.beginPath(); ctx.moveTo(...root); ctx.lineTo(...tip);
+      ctx.strokeStyle = "rgba(60,40,20,.35)"; ctx.lineWidth = 0.8; ctx.stroke();
+    });
+  }
+
+  function frame(dt) {
+    ctx.clearRect(0, 0, W, H);
+    ripples = ripples.filter((r) => (r.age += dt) < 60);
+    ripples.forEach((r) => {
+      [0, 14].forEach((lag) => {
+        const age = r.age - lag;
+        if (age <= 0) return;
+        ctx.beginPath(); ctx.arc(r.x, r.y, 6 + age * 1.6, 0, TAU);
+        ctx.strokeStyle = `rgba(255,255,255,${0.7 * (1 - age / 60)})`; ctx.lineWidth = 2; ctx.stroke();
+      });
+    });
+    fish.forEach((f) => { if (dt) step(f, dt); draw(f); });
+  }
+
+  // touching a fish makes it bolt; a tap nearby startles the ones close by
+  function scare(x, y, touchOnly) {
+    fish.forEach((f) => {
+      let d = Infinity;
+      f.segs.forEach((s) => (d = Math.min(d, Math.hypot(s.x - x, s.y - y))));
+      const touched = d < f.size * 1.6;
+      if (!touched && (touchOnly || d > 140)) return;
+      const c = f.segs[4];
+      f.fleeAngle = Math.atan2(c.y - y, c.x - x);
+      f.flee = 1;
+      f.boost = Math.max(f.boost, touched ? 5 : 3);
+    });
+  }
+
+  addEventListener("resize", resize);
+  resize();
+  if (still) { frame(0); return; }
+  addEventListener("pointerdown", (e) => {
+    ripples.push({ x: e.clientX, y: e.clientY, age: 0 });
+    scare(e.clientX, e.clientY, false);
+  }, { passive: true });
+  addEventListener("pointermove", (e) => {
+    if (e.pointerType === "mouse" || e.buttons) scare(e.clientX, e.clientY, true);
+  }, { passive: true });
+  let last = performance.now();
+  (function loop(now) {
+    const dt = Math.min(3, (now - last) / 16.67); last = now;
+    frame(dt);
+    requestAnimationFrame(loop);
+  })(last);
+})();
+
+flush();
+</script>
+</body>
+</html>
